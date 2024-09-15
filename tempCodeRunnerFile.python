@@ -1,0 +1,63 @@
+from PIL import Image
+from Crypto.Cipher import DES
+from Crypto.Protocol.KDF import scrypt
+from Crypto.Util.Padding import pad
+import numpy as np
+import getpass
+
+# Function to derive DES key using scrypt
+def derive_key(password: str):
+    salt = b"this_is_a_salt"  # You can replace this with a random salt for better security
+    key = scrypt(password.encode(), salt, key_len=8, N=2**14, r=8, p=1)
+    return key
+
+# Function to encrypt image data with DES in ECB mode
+def encrypt_ecb(data, key):
+    des = DES.new(key, DES.MODE_ECB)
+    encrypted_data = des.encrypt(pad(data, DES.block_size))
+    return encrypted_data
+
+# Function to encrypt image data with DES in OFB mode
+def encrypt_ofb(data, key):
+    des = DES.new(key, DES.MODE_OFB)
+    encrypted_data = des.encrypt(data)
+    return encrypted_data
+
+# Function to flatten the image into bytes and encrypt
+def encrypt_image(image_path, password):
+    # Open image and convert to RGB
+    img = Image.open(image_path).convert('RGB')
+    
+    # Get pixel data and flatten it into bytes
+    pixel_data = np.array(img)
+    flat_data = pixel_data.tobytes()
+    
+    # Derive DES key from password
+    key = derive_key(password)
+    
+    # Encrypt image data with ECB
+    encrypted_data_ecb = encrypt_ecb(flat_data, key)
+    
+    # Encrypt image data with OFB
+    encrypted_data_ofb = encrypt_ofb(flat_data, key)
+    
+    # Convert encrypted byte data back to RGB image
+    encrypted_img_ecb = Image.frombytes('RGB', img.size, encrypted_data_ecb[:len(flat_data)])
+    encrypted_img_ofb = Image.frombytes('RGB', img.size, encrypted_data_ofb[:len(flat_data)])
+    
+    # Display the encrypted images
+    encrypted_img_ecb.show(title="Encrypted ECB")
+    encrypted_img_ofb.show(title="Encrypted OFB")
+    
+    return encrypted_img_ecb, encrypted_img_ofb
+
+# Main function to get user input and encrypt the image
+def main():
+    image_path = input("C:\Users\dell\Desktop\sample_input.png")
+    password = getpass.getpass("Enter password: ")
+    
+    # Encrypt the image
+    ecb_img, ofb_img = encrypt_image(image_path, password)
+
+if __name__ == "__main__":
+    main()
